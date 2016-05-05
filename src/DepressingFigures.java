@@ -13,17 +13,22 @@ public class DepressingFigures {
 
     // first param is number of sig figs to use. need to give MathContext so BigDecimal divide method
     // doesn't throw an exception if the result is an non-terminating decimal
-    private static final MathContext PRECISION_AND_ROUNDING = new MathContext(10, RoundingMode.HALF_EVEN);
+    private static final MathContext SIG_FIGS_AND_ROUNDING = new MathContext(20, RoundingMode.HALF_EVEN);
+
 
     // don't pass double 0.05125 in directly -- pass it as a String
     // 5.125% interest rate, divided by 365.25 to get daily rate and again by 100 to get a decimal
     private static final BigDecimal INTEREST_RATE = new BigDecimal("0.05125")
-            .divide(new BigDecimal("365.25"), PRECISION_AND_ROUNDING);
+            .divide(new BigDecimal("365.25"), SIG_FIGS_AND_ROUNDING);
 
 
 
     private BalancePair mBalancePair;
     private int mCurrentMonth;
+
+    public int getmCurrentMonth() {
+        return mCurrentMonth;
+    }
 
     public DepressingFigures(BalancePair pair, int currentMonth) {
 
@@ -31,12 +36,12 @@ public class DepressingFigures {
         this.mCurrentMonth = currentMonth;
     }
 
-    private BalancePair getBalancePair() {
+    public BalancePair getBalancePair() {
 
         return mBalancePair;
     }
 
-    private BigDecimal comparePayments(BigDecimal payment1, BigDecimal payment2) {
+    public BigDecimal comparePayments(BigDecimal payment1, BigDecimal payment2) {
 
         return null;
 
@@ -45,27 +50,28 @@ public class DepressingFigures {
 
     /**
      *
-     * @return balance after 30 days of interest accumulation, given the current principal and interest owed
+     * @return balance after a month of interest accumulation
      */
-    private BalancePair nextMonthBalance() {
+    public BalancePair nextMonthBalance(int monthNumber) {
 
         // added accumulated interest to starting interest
-        BigDecimal interest = mBalancePair.getInterest().add(monthlyInterestAccumulated());
+        BigDecimal interest = mBalancePair.getInterest()
+                .add(monthlyInterestAccumulated(monthNumber), SIG_FIGS_AND_ROUNDING);
         BigDecimal principal = mBalancePair.getPrincipal();
 
         return new BalancePair(principal, interest);
     }
 
-    private BigDecimal monthlyInterestAccumulated() {
+    public BigDecimal monthlyInterestAccumulated(int monthNumber) {
 
         int days;
 
-        days = getDaysFromMonth(mCurrentMonth);
+        days = getDaysFromMonth(monthNumber);
 
 
         BigDecimal amount = mBalancePair.getPrincipal()
-                .multiply(INTEREST_RATE)
-                .multiply(new BigDecimal(days));
+                .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
+                .multiply(new BigDecimal(days), SIG_FIGS_AND_ROUNDING);
 
         amount = amount.setScale(2, RoundingMode.CEILING);
 
@@ -81,15 +87,15 @@ public class DepressingFigures {
     private BigDecimal interestAccumulated(int daysSinceLastPayment) {
 
         BigDecimal amount = mBalancePair.getPrincipal()
-                .multiply(INTEREST_RATE)
-                .multiply(new BigDecimal(daysSinceLastPayment));
+                .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
+                .multiply(new BigDecimal(daysSinceLastPayment), SIG_FIGS_AND_ROUNDING);
 
         amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
     }
 
-    private int getDaysFromMonth(final int month) {
+    public int getDaysFromMonth(final int month) {
 
         final int days;
 
@@ -142,20 +148,56 @@ public class DepressingFigures {
 
         if (payment.compareTo(interest) < 1) { // payment is less than or equal to current interest
 
-            BigDecimal newInterest = interest.subtract(payment);
+            BigDecimal newInterest = interest.subtract(payment, SIG_FIGS_AND_ROUNDING);
             mBalancePair.setInterest(newInterest);
         }
 
         else {
             // calculate amount to apply to principal
-            BigDecimal appliedToPrincipal = payment.subtract(interest);
+            BigDecimal appliedToPrincipal = payment.subtract(interest, SIG_FIGS_AND_ROUNDING);
 
             // payment was more than interest -- set it to $0.00
             mBalancePair.setInterest(new BigDecimal("0.00"));
 
             // get current principal, subtract the amount from it
             BigDecimal currentPrincipal = mBalancePair.getPrincipal();
-            mBalancePair.setPrincipal(currentPrincipal.subtract(appliedToPrincipal));
+            mBalancePair.setPrincipal(currentPrincipal.subtract(appliedToPrincipal, SIG_FIGS_AND_ROUNDING));
+        }
+
+    }
+
+    public void makePaymentSeries(BigDecimal payment, int monthsToPay) {
+
+        BigDecimal currentPrincipal = mBalancePair.getPrincipal();
+
+
+        int currentMonth = getmCurrentMonth(); // used by monthlyInterestAccumulated
+        // to get the number of days before next payment due date
+
+        // number of months we've made the payment
+        int monthsPaid = 0;
+
+
+        while (monthsToPay > 0) {
+
+            makePayment(payment); // interest should be recalculated after we make a payment
+            BigDecimal currentInterest = mBalancePair.getInterest();
+
+            monthsToPay--;
+
+            // need to calculate interest that accumulates in the month between payments
+            // and set the interest to be that amount + the current interest
+            mBalancePair.setInterest(currentInterest
+                    .add(monthlyInterestAccumulated(currentMonth), SIG_FIGS_AND_ROUNDING));
+
+
+
+           currentMonth++;
+
+            // update count of elapsed months by 1
+            monthsPaid++;
+
+            System.out.println("Balance in " + monthsPaid + " month(s): \n" + mBalancePair + "\n");
         }
 
     }
@@ -163,14 +205,20 @@ public class DepressingFigures {
 
     public static void main(String[] args) {
 
+        /*DepressingFigures df = new DepressingFigures(new BalancePair(
+                new BigDecimal("5512.09"), new BigDecimal("12.38")
+                ), 5);
+
+        BigDecimal payment = new BigDecimal("200.00");
+        df.makePaymentSeries(payment, 6);*/
+
         DepressingFigures df = new DepressingFigures(new BalancePair(
-                new BigDecimal("5500.00"), new BigDecimal("12.00")
-                ), 4);
+                new BigDecimal("5500"), new BigDecimal("12.00")), 5);
 
-        BigDecimal payment = new BigDecimal("4.37");
-        df.makePayment(payment);
+        BigDecimal payment = new BigDecimal("20.00");
+        df.makePaymentSeries(payment, 6);
 
-        System.out.println(df.getBalancePair().toString());
+
 
 
 
