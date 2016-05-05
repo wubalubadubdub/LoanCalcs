@@ -22,13 +22,18 @@ public class DepressingFigures {
 
 
 
-    private BigDecimal principal;
-    private int currentMonth;
+    private BalancePair mBalancePair;
+    private int mCurrentMonth;
 
-    public DepressingFigures(BigDecimal principal, int currentMonth) {
+    public DepressingFigures(BalancePair pair, int currentMonth) {
 
-        this.principal = principal;
-        this.currentMonth = currentMonth;
+        this.mBalancePair = pair;
+        this.mCurrentMonth = currentMonth;
+    }
+
+    private BalancePair getBalancePair() {
+
+        return mBalancePair;
     }
 
     private BigDecimal comparePayments(BigDecimal payment1, BigDecimal payment2) {
@@ -38,20 +43,30 @@ public class DepressingFigures {
 
     }
 
-    private BigDecimal nextMonthBalance() {
+    /**
+     *
+     * @return balance after 30 days of interest accumulation, given the current principal and interest owed
+     */
+    private BalancePair nextMonthBalance() {
 
-        BigDecimal interest = this.monthlyInterestAccumulated();
-        return principal.add(interest);
+        // added accumulated interest to starting interest
+        BigDecimal interest = mBalancePair.getInterest().add(monthlyInterestAccumulated());
+        BigDecimal principal = mBalancePair.getPrincipal();
+
+        return new BalancePair(principal, interest);
     }
 
     private BigDecimal monthlyInterestAccumulated() {
 
         int days;
 
-        days = getDaysFromMonth(this.currentMonth);
+        days = getDaysFromMonth(mCurrentMonth);
 
 
-        BigDecimal amount = principal.multiply(INTEREST_RATE).multiply(new BigDecimal(days));
+        BigDecimal amount = mBalancePair.getPrincipal()
+                .multiply(INTEREST_RATE)
+                .multiply(new BigDecimal(days));
+
         amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
@@ -59,13 +74,16 @@ public class DepressingFigures {
 
     /**
      *
-     * @param days the number of days since last payment was made. used to calculate the accumlated interest
+     * @param daysSinceLastPayment the number of daysSinceLastPayment since last payment was made. used to calculate the accumlated interest
      *             since then
-     * @return the dollar amount of interest that has accumulated in the last N days since last payment
+     * @return the dollar amount of interest that has accumulated in the last N daysSinceLastPayment since last payment
      */
-    private BigDecimal interestAccumulated(int days) {
+    private BigDecimal interestAccumulated(int daysSinceLastPayment) {
 
-        BigDecimal amount = principal.multiply(INTEREST_RATE).multiply(new BigDecimal(days));
+        BigDecimal amount = mBalancePair.getPrincipal()
+                .multiply(INTEREST_RATE)
+                .multiply(new BigDecimal(daysSinceLastPayment));
+
         amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
@@ -115,17 +133,51 @@ public class DepressingFigures {
 
     }
 
+    public void makePayment(BigDecimal payment) {
+
+
+
+        // apply payment to interest first
+        final BigDecimal interest = mBalancePair.getInterest();
+
+        if (payment.compareTo(interest) < 1) { // payment is less than or equal to current interest
+
+            BigDecimal newInterest = interest.subtract(payment);
+            mBalancePair.setInterest(newInterest);
+        }
+
+        else {
+            // calculate amount to apply to principal
+            BigDecimal appliedToPrincipal = payment.subtract(interest);
+
+            // payment was more than interest -- set it to $0.00
+            mBalancePair.setInterest(new BigDecimal("0.00"));
+
+            // get current principal, subtract the amount from it
+            BigDecimal currentPrincipal = mBalancePair.getPrincipal();
+            mBalancePair.setPrincipal(currentPrincipal.subtract(appliedToPrincipal));
+        }
+
+    }
+
 
     public static void main(String[] args) {
 
-        DepressingFigures df = new DepressingFigures(new BigDecimal("5512.09"), 4);
-        BigDecimal monthlyInterest = df.monthlyInterestAccumulated();
-        BigDecimal interest = df.interestAccumulated(16);
-        BigDecimal nextMonthBalance = df.nextMonthBalance();
+        DepressingFigures df = new DepressingFigures(new BalancePair(
+                new BigDecimal("5500.00"), new BigDecimal("12.00")
+                ), 4);
 
-        System.out.println(monthlyInterest);
-        System.out.println(interest);
-        System.out.println(nextMonthBalance);
+        BigDecimal payment = new BigDecimal("4.37");
+        df.makePayment(payment);
+
+        System.out.println(df.getBalancePair().toString());
+
+
+
+
+
+
+
 
     }
 }
