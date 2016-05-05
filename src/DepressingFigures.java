@@ -31,6 +31,13 @@ public class DepressingFigures {
         this.currentMonth = currentMonth;
     }
 
+    private BigDecimal comparePayments(BigDecimal payment1, BigDecimal payment2) {
+
+        return null;
+
+
+    }
+
     private BigDecimal nextMonthBalance() {
 
         BigDecimal interest = this.monthlyInterestAccumulated();
@@ -45,7 +52,7 @@ public class DepressingFigures {
 
 
         BigDecimal amount = principal.multiply(INTEREST_RATE).multiply(new BigDecimal(days));
-        amount = amount.setScale(2, RoundingMode.HALF_EVEN);
+        amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
     }
@@ -59,7 +66,7 @@ public class DepressingFigures {
     private BigDecimal interestAccumulated(int days) {
 
         BigDecimal amount = principal.multiply(INTEREST_RATE).multiply(new BigDecimal(days));
-        amount = amount.setScale(2, RoundingMode.HALF_EVEN);
+        amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
     }
@@ -113,9 +120,11 @@ public class DepressingFigures {
 
         DepressingFigures df = new DepressingFigures(new BigDecimal("5512.09"), 4);
         BigDecimal monthlyInterest = df.monthlyInterestAccumulated();
+        BigDecimal interest = df.interestAccumulated(16);
         BigDecimal nextMonthBalance = df.nextMonthBalance();
 
         System.out.println(monthlyInterest);
+        System.out.println(interest);
         System.out.println(nextMonthBalance);
 
     }
