@@ -25,11 +25,14 @@ public class BalancePair {
     @Override
     public String toString() {
 
-        return "Principal: $ " +
-                getPrincipal() +
-                "\n" +
-                "Interest: $ " +
-                getInterest();
+        BigDecimal principal = getPrincipal();
+        BigDecimal interest = getInterest();
+        principal = principal.setScale(2, BigDecimal.ROUND_HALF_EVEN);
+        interest = interest.setScale(2, BigDecimal.ROUND_HALF_EVEN);
+
+        return "Principal: $ " + principal +
+                "\nInterest: $ " + interest;
+
     }
 
     public void setPrincipal(final BigDecimal principal) {

@@ -3,6 +3,8 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 /**
  * Created by bearg on 5/5/2016.
@@ -62,6 +64,13 @@ public class DepressingFigures {
         return new BalancePair(principal, interest);
     }
 
+
+    /**
+     *
+     * @param monthNumber a number 1-12 that represents that month
+     *                    in the calendar year
+     * @return the interest that accumulates between monthly payments
+     */
     public BigDecimal monthlyInterestAccumulated(int monthNumber) {
 
         int days;
@@ -73,7 +82,7 @@ public class DepressingFigures {
                 .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
                 .multiply(new BigDecimal(days), SIG_FIGS_AND_ROUNDING);
 
-        amount = amount.setScale(2, RoundingMode.CEILING);
+        // amount = amount.setScale(2, RoundingMode.CEILING);
 
         return amount;
     }
@@ -90,11 +99,16 @@ public class DepressingFigures {
                 .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
                 .multiply(new BigDecimal(daysSinceLastPayment), SIG_FIGS_AND_ROUNDING);
 
-        amount = amount.setScale(2, RoundingMode.CEILING);
-
         return amount;
     }
 
+    /**
+     *
+     *
+     * @param month a number 1-12 that represents that month
+     *                    in the calendar year
+     * @return the number of days in that month
+     */
     public int getDaysFromMonth(final int month) {
 
         final int days;
@@ -141,6 +155,10 @@ public class DepressingFigures {
 
     }
 
+    /**
+     *
+     * @param payment the payment amount in as a BigDecimal
+     */
     public void makePayment(BigDecimal payment) {
 
 
@@ -168,6 +186,12 @@ public class DepressingFigures {
 
     }
 
+    /**
+     * This method calculates and prints the principal and interest balance after each month for the
+     * number of months specified when the payment is applied each month.
+     * @param payment the amount to be applied each month
+     * @param monthsToPay the number of months to apply the payment
+     */
     public void makePaymentSeries(BigDecimal payment, int monthsToPay) {
 
         BigDecimal currentPrincipal = mBalancePair.getPrincipal();
@@ -187,13 +211,10 @@ public class DepressingFigures {
 
             monthsToPay--;
 
-
-
             // need to calculate interest that accumulates in the month between payments
             // and set the interest to be that amount + the current interest
             mBalancePair.setInterest(currentInterest
                     .add(monthlyInterestAccumulated(currentMonth), SIG_FIGS_AND_ROUNDING));
-
 
             if (currentMonth == 12) {
 
@@ -212,6 +233,88 @@ public class DepressingFigures {
 
     }
 
+    /**
+     * Calculates the minimum monthly payment needed to pay off the loan within the
+     * specified number of months.
+     * @param monthsToPayoff the number of months to fully pay off the balance
+     * @return the minimum monthly payment needed
+     */
+    public BigDecimal monthlyPaymentNeeded(int monthsToPayoff) {
+
+        final BigDecimal epsilon = new BigDecimal("1.00"); // be within this dollar amount of $0.00 at the end
+        // for both the principal and interest due
+
+        int startingMonth = mCurrentMonth;
+        BigDecimal guessPayment;
+
+        // need to choose a lower and upper bound for the needed monthly payment,
+        // then binary search for the exact payment
+
+        BigDecimal finalAmount;
+        BigDecimal startingPrincipal = mBalancePair.getPrincipal();
+        BigDecimal startingInterest = mBalancePair.getInterest();
+
+        // low payment can be the amount we'd pay if we just covered the interest every month
+        // this varies slightly depending on the month, but we just need an approximate figure anyway
+        BigDecimal lowPayment = mBalancePair.getInterest();
+
+        // high payment can be the current principal
+        BigDecimal highPayment = mBalancePair.getPrincipal();
+
+        // this bipredicate returns true if the ending amount is within epsilon of $0.00.
+        // thus, our stopping condition will be abs(finalValue) <= epsilon, or - epsilon <= finalValue <= + epsilon
+        BiPredicate<BigDecimal, BigDecimal> withinEpsilon = (v, e) -> v.abs().compareTo(e) <= 0;
+
+
+        while (true) {
+
+            // need to reset the starting amounts for each new guess
+            mBalancePair.setPrincipal(startingPrincipal);
+            mBalancePair.setInterest(startingInterest);
+            int currentMonth = startingMonth;
+
+            guessPayment = lowPayment.add(highPayment, SIG_FIGS_AND_ROUNDING )
+                    .divide(new BigDecimal(2), SIG_FIGS_AND_ROUNDING);
+
+            System.out.printf("\nTrying amount $ %.2f for %d months\n", guessPayment, monthsToPayoff);
+
+            makePaymentSeries(guessPayment, monthsToPayoff);
+            if ((currentMonth + monthsToPayoff) > 12) {
+                currentMonth = (currentMonth + monthsToPayoff) % 12;
+            } else {
+                currentMonth += monthsToPayoff;
+            }
+
+            finalAmount = nextMonthBalance(currentMonth).getPrincipal();
+
+            if (withinEpsilon.test(finalAmount, epsilon)) { // we're done, break from the loop
+
+                return guessPayment;
+
+            } else {
+
+                if (finalAmount.compareTo(epsilon) > 0) { // final amount > epsilon, meaning payment was too low
+
+                    lowPayment = guessPayment;
+
+                } else { // final amount < epsilon, meaning payment was too high
+
+                    highPayment = guessPayment;
+                }
+            }
+
+
+        }
+
+    }
+
+    public void printMinMonthlyPayment(BigDecimal minMonthlyPayment, int monthsToPayOff) {
+
+        System.out.printf("The minimum monthly payment is $ %.2f " +
+        " for the loan to be paid off in " +
+        monthsToPayOff + " months", minMonthlyPayment);
+    }
+
 
     public static void main(String[] args) {
 
@@ -219,14 +322,9 @@ public class DepressingFigures {
                 new BigDecimal("5512.09"), new BigDecimal("12.38")
                 ), 5);
 
-        BigDecimal payment = new BigDecimal("200.00");
-        df.makePaymentSeries(payment, 6);
+        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(12);
+        df.printMinMonthlyPayment(minMonthlyPayment, 12);
 
-        /*DepressingFigures df = new DepressingFigures(new BalancePair(
-                new BigDecimal("5500"), new BigDecimal("12.00")), 5);
-
-        BigDecimal payment = new BigDecimal("20.00");
-        df.makePaymentSeries(payment, 12);*/
 
     }
 }
