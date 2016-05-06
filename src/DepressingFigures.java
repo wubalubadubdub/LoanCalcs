@@ -112,6 +112,8 @@ public class DepressingFigures {
         monthsWith31Days.add(7);
         monthsWith31Days.add(8);
         monthsWith31Days.add(10);
+        monthsWith31Days.add(12);
+
 
         // not included in the above is February, which we'll handle separately
 
@@ -185,14 +187,22 @@ public class DepressingFigures {
 
             monthsToPay--;
 
+
+
             // need to calculate interest that accumulates in the month between payments
             // and set the interest to be that amount + the current interest
             mBalancePair.setInterest(currentInterest
                     .add(monthlyInterestAccumulated(currentMonth), SIG_FIGS_AND_ROUNDING));
 
 
+            if (currentMonth == 12) {
 
-           currentMonth++;
+                currentMonth = 1;
+            }
+
+            else {
+                currentMonth++;
+            }
 
             // update count of elapsed months by 1
             monthsPaid++;
@@ -205,27 +215,18 @@ public class DepressingFigures {
 
     public static void main(String[] args) {
 
-        /*DepressingFigures df = new DepressingFigures(new BalancePair(
+        DepressingFigures df = new DepressingFigures(new BalancePair(
                 new BigDecimal("5512.09"), new BigDecimal("12.38")
                 ), 5);
 
         BigDecimal payment = new BigDecimal("200.00");
-        df.makePaymentSeries(payment, 6);*/
+        df.makePaymentSeries(payment, 6);
 
-        DepressingFigures df = new DepressingFigures(new BalancePair(
+        /*DepressingFigures df = new DepressingFigures(new BalancePair(
                 new BigDecimal("5500"), new BigDecimal("12.00")), 5);
 
         BigDecimal payment = new BigDecimal("20.00");
-        df.makePaymentSeries(payment, 6);
-
-
-
-
-
-
-
-
-
+        df.makePaymentSeries(payment, 12);*/
 
     }
 }
