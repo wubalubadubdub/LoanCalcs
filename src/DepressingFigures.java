@@ -32,7 +32,12 @@ public class DepressingFigures {
                     " This calculates the minimum monthly payment you need to make to do that.\n\n" +
                     "payseries: provide a payment to make and the number of months to make it, and this shows" +
                     " you the balance at the end of each month until then.\n\n" +
-                    "nextbal: calculates next month's balance based on current interest and principal\n\n";
+                    "nextbal: next month's balance if you let interest accumulate the entire month\n\n" +
+                    "bipay: provide a payment amount that will be split into two equal amounts, one to be" +
+                    " paid on the 15th and the other on the 5th of the following month. displays the balance " +
+                    "after the second payment has been made, i.e. balance after payment on 5th of follwing month\n\n";
+
+
 
     private BalancePair mBalancePair;
     private int mCurrentMonth;
@@ -51,13 +56,6 @@ public class DepressingFigures {
     public BalancePair getBalancePair() {
 
         return mBalancePair;
-    }
-
-    public BigDecimal comparePayments(BigDecimal payment1, BigDecimal payment2) {
-
-        return null;
-
-
     }
 
     /**
@@ -160,8 +158,8 @@ public class DepressingFigures {
     }
 
     /**
-     *
-     * @param payment the payment amount in as a BigDecimal
+     * Shows the balance 1 month from now if you make the payment on the current date
+     * @param payment the payment amount as a BigDecimal
      */
     public void makePayment(BigDecimal payment) {
 
@@ -332,6 +330,75 @@ public class DepressingFigures {
         monthsToPayOff + " months\n", minMonthlyPayment);
     }
 
+    public void makeBiMonthlyPayments(BigDecimal payment) {
+
+        BigDecimal halfPayment = payment.divide(new BigDecimal(2), SIG_FIGS_AND_ROUNDING);
+
+        int currentMonth = getmCurrentMonth();
+        int days = getDaysFromMonth(currentMonth);
+
+        if (days == 30) {
+
+
+            BigDecimal interestToAdd = interestAccumulated(10); // from 5th to 15th of month
+
+            // add the accumulated interest to the current interest
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 15th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 1st payment, on 15th of month
+            interestToAdd = interestAccumulated(20); // from 15th to 5th, 30 day month
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 5th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 2nd payment, on 5th of following month
+
+            System.out.println(mBalancePair);
+
+        } else if (days == 31) {
+
+            BigDecimal interestToAdd = interestAccumulated(10); // from 5th to 15th of month
+
+            // add the accumulated interest to the current interest
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 15th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 1st payment, on 15th of month
+            interestToAdd = interestAccumulated(21); // from 15th to 5th, 31 day month
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 5th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 2nd payment, on 5th of following month
+
+            System.out.println(mBalancePair);
+
+        } else { // 28 days -- February
+
+            BigDecimal interestToAdd = interestAccumulated(10); // from 5th to 15th of month
+
+            // add the accumulated interest to the current interest
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 15th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 1st payment, on 15th of month
+            interestToAdd = interestAccumulated(18); // from 15th to 5th, 28 day month
+            getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
+
+            System.out.println("Making payment on 5th with balance " + mBalancePair);
+
+            makePayment(halfPayment); // 2nd payment, on 5th of following month
+
+            System.out.println(mBalancePair);
+
+        }
+
+    }
+
 
     public static void main(String[] args) {
 
@@ -341,7 +408,7 @@ public class DepressingFigures {
         BigDecimal interest;
 
         List<String> modeOptions = new ArrayList<>();
-        String[] saModeOptions = {"help", "minpay", "payseries", "nextbal"};
+        String[] saModeOptions = {"help", "minpay", "payseries", "nextbal", "bipay"};
         for (String s : saModeOptions) {
 
             modeOptions.add(s);
@@ -403,7 +470,13 @@ public class DepressingFigures {
                         System.out.println(df.nextMonthBalance(df.getmCurrentMonth()));
                         break;
 
+                    case "bipay":
+                        System.out.println("Enter payment to be split into two bi-monthly payments: ");
+                        String biPaymentStr = sc.next();
+                        BigDecimal biPayment = new BigDecimal(biPaymentStr);
 
+                        df.makeBiMonthlyPayments(biPayment);
+                        break;
 
                 }
 
