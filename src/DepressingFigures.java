@@ -4,7 +4,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiPredicate;
-import java.util.function.Predicate;
 
 /**
  * Created by bearg on 5/5/2016.
@@ -23,7 +22,8 @@ public class DepressingFigures {
     private static final BigDecimal INTEREST_RATE = new BigDecimal("0.05125")
             .divide(new BigDecimal("365.25"), SIG_FIGS_AND_ROUNDING);
 
-
+    private static final BigDecimal EPSILON = new BigDecimal("1.00"); // be within this dollar amount of $0.00 at the end
+    // for both the principal and interest due
 
     private BalancePair mBalancePair;
     private int mCurrentMonth;
@@ -229,6 +229,16 @@ public class DepressingFigures {
             monthsPaid++;
 
             System.out.println("Balance in " + monthsPaid + " month(s): \n" + mBalancePair + "\n");
+
+            // if balance goes lower than EPSILON less than 0.00, stop making payments
+            BigDecimal amountBelowZero = new BigDecimal("0.00")
+                    .subtract(mBalancePair.getPrincipal(), SIG_FIGS_AND_ROUNDING);
+
+            if (amountBelowZero.compareTo(EPSILON) > 0) {
+
+                System.out.println("Guess amount too high. Lowering amount and retrying...");
+                break;
+            }
         }
 
     }
@@ -241,8 +251,7 @@ public class DepressingFigures {
      */
     public BigDecimal monthlyPaymentNeeded(int monthsToPayoff) {
 
-        final BigDecimal epsilon = new BigDecimal("1.00"); // be within this dollar amount of $0.00 at the end
-        // for both the principal and interest due
+
 
         int startingMonth = mCurrentMonth;
         BigDecimal guessPayment;
@@ -261,8 +270,8 @@ public class DepressingFigures {
         // high payment can be the current principal
         BigDecimal highPayment = mBalancePair.getPrincipal();
 
-        // this bipredicate returns true if the ending amount is within epsilon of $0.00.
-        // thus, our stopping condition will be abs(finalValue) <= epsilon, or - epsilon <= finalValue <= + epsilon
+        // this bipredicate returns true if the ending amount is within EPSILON of $0.00.
+        // thus, our stopping condition will be abs(finalValue) <= EPSILON, or - EPSILON <= finalValue <= + EPSILON
         BiPredicate<BigDecimal, BigDecimal> withinEpsilon = (v, e) -> v.abs().compareTo(e) <= 0;
 
 
@@ -279,6 +288,8 @@ public class DepressingFigures {
             System.out.printf("\nTrying amount $ %.2f for %d months\n", guessPayment, monthsToPayoff);
 
             makePaymentSeries(guessPayment, monthsToPayoff);
+
+
             if ((currentMonth + monthsToPayoff) > 12) {
                 currentMonth = (currentMonth + monthsToPayoff) % 12;
             } else {
@@ -287,17 +298,22 @@ public class DepressingFigures {
 
             finalAmount = nextMonthBalance(currentMonth).getPrincipal();
 
-            if (withinEpsilon.test(finalAmount, epsilon)) { // we're done, break from the loop
+            if (withinEpsilon.test(finalAmount, EPSILON)) { // we're done, break from the loop
+
+                // reset the values to what they were to begin with
+                mBalancePair.setPrincipal(startingPrincipal);
+                mBalancePair.setInterest(startingInterest);
+                mCurrentMonth = startingMonth;
 
                 return guessPayment;
 
             } else {
 
-                if (finalAmount.compareTo(epsilon) > 0) { // final amount > epsilon, meaning payment was too low
+                if (finalAmount.compareTo(EPSILON) > 0) { // final amount > EPSILON, meaning payment was too low
 
                     lowPayment = guessPayment;
 
-                } else { // final amount < epsilon, meaning payment was too high
+                } else { // final amount < EPSILON, meaning payment was too high
 
                     highPayment = guessPayment;
                 }
@@ -311,8 +327,8 @@ public class DepressingFigures {
     public void printMinMonthlyPayment(BigDecimal minMonthlyPayment, int monthsToPayOff) {
 
         System.out.printf("The minimum monthly payment is $ %.2f " +
-        " for the loan to be paid off in " +
-        monthsToPayOff + " months", minMonthlyPayment);
+        "for the loan to be paid off in " +
+        monthsToPayOff + " months\n", minMonthlyPayment);
     }
 
 
@@ -322,9 +338,22 @@ public class DepressingFigures {
                 new BigDecimal("5512.09"), new BigDecimal("12.38")
                 ), 5);
 
-        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(12);
-        df.printMinMonthlyPayment(minMonthlyPayment, 12);
+        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(120);
+        df.printMinMonthlyPayment(minMonthlyPayment, 120);
 
+        // check to see if our answer is correct
+        // df.makePaymentSeries(new BigDecimal("58.68"), 120);
+
+       /* System.out.println("Switching to another loan...");
+
+        DepressingFigures df2 = new DepressingFigures(new BalancePair(
+                new BigDecimal("50000"), new BigDecimal("0.00")
+        ), 8);
+
+        BigDecimal minMonthlyPayment2 = df2.monthlyPaymentNeeded(12);
+        df2.printMinMonthlyPayment(minMonthlyPayment2, 12);
+
+        */
 
     }
 }
