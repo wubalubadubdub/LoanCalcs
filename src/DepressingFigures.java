@@ -1,12 +1,8 @@
-import com.sun.org.apache.xpath.internal.SourceTree;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.function.BiPredicate;
 
 /**
@@ -30,6 +26,13 @@ public class DepressingFigures {
     private static final BigDecimal EPSILON = new BigDecimal("1.00");
     // be within this dollar amount of $0.00 at the end
     // for both the principal and interest due
+
+    private static final String MODE_OPTIONS_HELP =
+            "minpay: provide the number of months that you want to pay off the loan in." +
+                    " This calculates the minimum monthly payment you need to make to do that.\n\n" +
+                    "payseries: provide a payment to make and the number of months to make it, and this shows" +
+                    " you the balance at the end of each month until then.\n\n" +
+                    "nextbal: calculates next month's balance based on current interest and principal\n\n";
 
     private BalancePair mBalancePair;
     private int mCurrentMonth;
@@ -234,7 +237,7 @@ public class DepressingFigures {
 
             if (amountBelowZero.compareTo(EPSILON) > 0) {
 
-                System.out.println("Guess amount too high. Lowering amount and retrying...");
+                System.out.println("Loan is fully paid after month " + (monthsPaid - 1));
                 break;
             }
         }
@@ -324,7 +327,7 @@ public class DepressingFigures {
 
     public void printMinMonthlyPayment(BigDecimal minMonthlyPayment, int monthsToPayOff) {
 
-        System.out.printf("The minimum monthly payment is $ %.10f " +
+        System.out.printf("The minimum monthly payment is $ %.2f " +
         "for the loan to be paid off in " +
         monthsToPayOff + " months\n", minMonthlyPayment);
     }
@@ -332,9 +335,17 @@ public class DepressingFigures {
 
     public static void main(String[] args) {
 
+        DepressingFigures df;
 
         BigDecimal principal;
         BigDecimal interest;
+
+        List<String> modeOptions = new ArrayList<>();
+        String[] saModeOptions = {"help", "minpay", "payseries", "nextbal"};
+        for (String s : saModeOptions) {
+
+            modeOptions.add(s);
+        }
 
         Scanner sc = new Scanner(System.in);
 
@@ -350,21 +361,69 @@ public class DepressingFigures {
                 String interestStr = sc.next();
                 interest = new BigDecimal(interestStr);
 
+                BalancePair bp = new BalancePair(principal, interest);
+                df = new DepressingFigures(bp);
+
+
+                System.out.println("Enter mode, or to see a list of available modes, " +
+                        "type \"help\" : ");
+
+                String modeStr = sc.next();
+
+                if (!modeOptions.contains(modeStr)) {
+
+                    throw new IllegalArgumentException();
+                }
+
+                switch (modeStr) {
+
+                    case "help":
+                        System.out.println(MODE_OPTIONS_HELP);
+                        break;
+
+                    case "minpay":
+                        System.out.println("Enter months to pay off loan in: ");
+                        int monthsToPayOff = sc.nextInt();
+                        BigDecimal minPayment = df.monthlyPaymentNeeded(monthsToPayOff);
+                        df.printMinMonthlyPayment(minPayment, monthsToPayOff);
+                        break;
+
+                    case "payseries":
+                        System.out.println("Enter payment amount to make each month: ");
+                        String paymentStr = sc.next();
+                        BigDecimal payment = new BigDecimal(paymentStr);
+
+                        System.out.println("Enter number of months to make this payment: ");
+                        int monthsToPay = sc.nextInt();
+
+                        df.makePaymentSeries(payment, monthsToPay);
+                        break;
+
+                    case "nextbal":
+                        System.out.println(df.nextMonthBalance(df.getmCurrentMonth()));
+                        break;
+
+
+
+                }
+
+
                 break;
 
             } catch (NumberFormatException nfe) {
 
                 System.out.println("Not a valid number.");
+
+            } catch (IllegalArgumentException iae) {
+
+                System.out.println("Not a valid mode. " +
+                        "Type \"help\" to get a list of modes and what they do.");
+
+            } catch (Exception e) {
+
+                System.out.println("Invalid input parameter");
             }
         }
-
-        DepressingFigures depfig = new DepressingFigures(
-                new BalancePair(principal, interest));
-
-        BigDecimal minMonthlyPayment = depfig.monthlyPaymentNeeded(60);
-        depfig.printMinMonthlyPayment(minMonthlyPayment, 60);
-
-
 
     }
 }

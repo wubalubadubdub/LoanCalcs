@@ -27,9 +27,9 @@ public class BalancePair {
 
         BigDecimal principal = getPrincipal();
         BigDecimal interest = getInterest();
-        /*principal = principal.setScale(2, BigDecimal.ROUND_HALF_EVEN);
+        principal = principal.setScale(2, BigDecimal.ROUND_HALF_EVEN);
         interest = interest.setScale(2, BigDecimal.ROUND_HALF_EVEN);
-*/
+
         return "Principal: $ " + principal +
                 "\nInterest: $ " + interest;
 
