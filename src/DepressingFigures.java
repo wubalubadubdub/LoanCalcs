@@ -1,8 +1,12 @@
+import com.sun.org.apache.xpath.internal.SourceTree;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Scanner;
 import java.util.function.BiPredicate;
 
 /**
@@ -34,10 +38,11 @@ public class DepressingFigures {
         return mCurrentMonth;
     }
 
-    public DepressingFigures(BalancePair pair, int currentMonth) {
+    public DepressingFigures(BalancePair pair) {
 
-        this.mBalancePair = pair;
-        this.mCurrentMonth = currentMonth;
+        mBalancePair = pair;
+        mCurrentMonth = Calendar.getInstance().get(Calendar.MONTH);
+        mCurrentMonth++; // Calendar is 0 indexed, so we must add 1 to the actual month number
     }
 
     public BalancePair getBalancePair() {
@@ -327,27 +332,39 @@ public class DepressingFigures {
 
     public static void main(String[] args) {
 
-        DepressingFigures df = new DepressingFigures(new BalancePair(
-                new BigDecimal("5512.09"), new BigDecimal("12.38")
-                ), 5);
 
-        // don't forget to change numbers to be the same in two lines below
-        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(60);
-        df.printMinMonthlyPayment(minMonthlyPayment, 60);
+        BigDecimal principal;
+        BigDecimal interest;
 
-        // check to see if our answer is correct
-        df.makePaymentSeries(df.monthlyPaymentNeeded(60), 60);
+        Scanner sc = new Scanner(System.in);
 
-       /* System.out.println("Switching to another loan...");
+        while (true) { // loop until input is valid
 
-        DepressingFigures df2 = new DepressingFigures(new BalancePair(
-                new BigDecimal("50000"), new BigDecimal("0.00")
-        ), 8);
+            try {
 
-        BigDecimal minMonthlyPayment2 = df2.monthlyPaymentNeeded(12);
-        df2.printMinMonthlyPayment(minMonthlyPayment2, 12);
+                System.out.println("Enter principal amount: ");
+                String principalStr = sc.next();
+                principal = new BigDecimal(principalStr);
 
-        */
+                System.out.println("Enter interest amount: ");
+                String interestStr = sc.next();
+                interest = new BigDecimal(interestStr);
+
+                break;
+
+            } catch (NumberFormatException nfe) {
+
+                System.out.println("Not a valid number.");
+            }
+        }
+
+        DepressingFigures depfig = new DepressingFigures(
+                new BalancePair(principal, interest));
+
+        BigDecimal minMonthlyPayment = depfig.monthlyPaymentNeeded(60);
+        depfig.printMinMonthlyPayment(minMonthlyPayment, 60);
+
+
 
     }
 }
