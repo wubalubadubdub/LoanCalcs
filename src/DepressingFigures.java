@@ -9,6 +9,7 @@ import java.util.function.BiPredicate;
  * Created by bearg on 5/5/2016.
  * This class does various calculations regarding loans.
  * The getDaysFromMonth method assumes 28 days in February at present.
+ * TODO: Add ability to track track total interest paid
  */
 public class DepressingFigures {
 
@@ -22,7 +23,8 @@ public class DepressingFigures {
     private static final BigDecimal INTEREST_RATE = new BigDecimal("0.05125")
             .divide(new BigDecimal("365.25"), SIG_FIGS_AND_ROUNDING);
 
-    private static final BigDecimal EPSILON = new BigDecimal("1.00"); // be within this dollar amount of $0.00 at the end
+    private static final BigDecimal EPSILON = new BigDecimal("1.00");
+    // be within this dollar amount of $0.00 at the end
     // for both the principal and interest due
 
     private BalancePair mBalancePair;
@@ -77,29 +79,23 @@ public class DepressingFigures {
 
         days = getDaysFromMonth(monthNumber);
 
-
-        BigDecimal amount = mBalancePair.getPrincipal()
+        return mBalancePair.getPrincipal()
                 .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
                 .multiply(new BigDecimal(days), SIG_FIGS_AND_ROUNDING);
-
-        // amount = amount.setScale(2, RoundingMode.CEILING);
-
-        return amount;
     }
 
     /**
      *
-     * @param daysSinceLastPayment the number of daysSinceLastPayment since last payment was made. used to calculate the accumlated interest
-     *             since then
+     * @param daysSinceLastPayment the number of daysSinceLastPayment since last payment was made.
+     *                             used to calculate the accumulated interest
+     *                             since then
      * @return the dollar amount of interest that has accumulated in the last N daysSinceLastPayment since last payment
      */
     private BigDecimal interestAccumulated(int daysSinceLastPayment) {
 
-        BigDecimal amount = mBalancePair.getPrincipal()
+        return mBalancePair.getPrincipal()
                 .multiply(INTEREST_RATE, SIG_FIGS_AND_ROUNDING)
                 .multiply(new BigDecimal(daysSinceLastPayment), SIG_FIGS_AND_ROUNDING);
-
-        return amount;
     }
 
     /**
@@ -193,9 +189,6 @@ public class DepressingFigures {
      * @param monthsToPay the number of months to apply the payment
      */
     public void makePaymentSeries(BigDecimal payment, int monthsToPay) {
-
-        BigDecimal currentPrincipal = mBalancePair.getPrincipal();
-
 
         int currentMonth = getmCurrentMonth(); // used by monthlyInterestAccumulated
         // to get the number of days before next payment due date
@@ -326,7 +319,7 @@ public class DepressingFigures {
 
     public void printMinMonthlyPayment(BigDecimal minMonthlyPayment, int monthsToPayOff) {
 
-        System.out.printf("The minimum monthly payment is $ %.2f " +
+        System.out.printf("The minimum monthly payment is $ %.10f " +
         "for the loan to be paid off in " +
         monthsToPayOff + " months\n", minMonthlyPayment);
     }
@@ -338,11 +331,12 @@ public class DepressingFigures {
                 new BigDecimal("5512.09"), new BigDecimal("12.38")
                 ), 5);
 
-        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(120);
-        df.printMinMonthlyPayment(minMonthlyPayment, 120);
+        // don't forget to change numbers to be the same in two lines below
+        BigDecimal minMonthlyPayment = df.monthlyPaymentNeeded(60);
+        df.printMinMonthlyPayment(minMonthlyPayment, 60);
 
         // check to see if our answer is correct
-        // df.makePaymentSeries(new BigDecimal("58.68"), 120);
+        df.makePaymentSeries(df.monthlyPaymentNeeded(60), 60);
 
        /* System.out.println("Switching to another loan...");
 
