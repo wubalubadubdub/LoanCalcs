@@ -35,7 +35,9 @@ public class DepressingFigures {
                     "nextbal: next month's balance if you let interest accumulate the entire month\n\n" +
                     "bipay: provide a payment amount that will be split into two equal amounts, one to be" +
                     " paid on the 15th and the other on the 5th of the following month. displays the balance " +
-                    "after the second payment has been made, i.e. balance after payment on 5th of follwing month\n\n";
+                    "after the second payment has been made, i.e. balance after payment on 5th of following month\n\n" +
+                    "compare: compare splitting a payment into two and paying bimonthly vs. paying that amount at the " +
+                    "end of the cycle. see how much will be saved in interest\n\n";
 
 
 
@@ -355,7 +357,7 @@ public class DepressingFigures {
 
             makePayment(halfPayment); // 2nd payment, on 5th of following month
 
-            System.out.println(mBalancePair);
+            System.out.println("Balance after payment on 5th: " + mBalancePair);
 
         } else if (days == 31) {
 
@@ -374,7 +376,7 @@ public class DepressingFigures {
 
             makePayment(halfPayment); // 2nd payment, on 5th of following month
 
-            System.out.println(mBalancePair);
+            System.out.println("Balance after payment on 5th: " + mBalancePair);
 
         } else { // 28 days -- February
 
@@ -383,20 +385,62 @@ public class DepressingFigures {
             // add the accumulated interest to the current interest
             getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
 
-            System.out.println("Making payment on 15th with balance " + mBalancePair);
+            System.out.println("Making payment on 15th with balance \n" + mBalancePair);
 
             makePayment(halfPayment); // 1st payment, on 15th of month
             interestToAdd = interestAccumulated(18); // from 15th to 5th, 28 day month
             getBalancePair().setInterest(getBalancePair().getInterest().add(interestToAdd));
 
-            System.out.println("Making payment on 5th with balance " + mBalancePair);
+            System.out.println("Making payment on 5th with balance \n" + mBalancePair);
 
             makePayment(halfPayment); // 2nd payment, on 5th of following month
 
-            System.out.println(mBalancePair);
+            System.out.println("Balance after payment on 5th: " + mBalancePair);
 
         }
 
+    }
+
+    public void compareMonthlyVsBimonthly(BigDecimal payment) {
+
+        int days = getDaysFromMonth(mCurrentMonth);
+
+        BigDecimal startingPrincipal = mBalancePair.getPrincipal();
+        BigDecimal startingInterest = mBalancePair.getInterest();
+
+        makeBiMonthlyPayments(payment);
+        BigDecimal afterBimonthly = mBalancePair.getPrincipal();
+
+        System.out.println("After bimonthly principal: " + afterBimonthly);
+
+        // reset the balance before making the same payment, but in one instead of split into two
+        mBalancePair.setPrincipal(startingPrincipal);
+
+        // add the interest accumulated over the whole month to the starting interest
+        BigDecimal interestToAdd = interestAccumulated(days);
+        mBalancePair.setInterest(startingInterest.add(interestToAdd, SIG_FIGS_AND_ROUNDING));
+
+        // apply the single monthly payment
+        makePayment(payment);
+        BigDecimal afterMonthly = mBalancePair.getPrincipal();
+
+        System.out.println("After monthly principal: " + afterMonthly);
+
+        // compare -- show interest saved and extra principal reduction
+        // difference in amount paid in interest is the difference between the two principals
+        BigDecimal principalDiffBimonthly = startingPrincipal
+                .subtract(afterBimonthly, SIG_FIGS_AND_ROUNDING);
+
+        BigDecimal principalDiffMonthly = startingPrincipal
+                .subtract(afterMonthly, SIG_FIGS_AND_ROUNDING);
+
+        System.out.printf("\nPrincipal reduction with bimonthly payments: $%.2f", principalDiffBimonthly);
+        System.out.printf("\nPrincipal reduction with monthly payments: $%.2f", principalDiffMonthly);
+
+        BigDecimal relativeDifference = principalDiffBimonthly.subtract(principalDiffMonthly, SIG_FIGS_AND_ROUNDING);
+
+        System.out.printf("\nBy splitting $%.2f in half and paying 2x a month, you saved $%.2f in interest"
+                , payment, relativeDifference);
     }
 
 
@@ -408,7 +452,7 @@ public class DepressingFigures {
         BigDecimal interest;
 
         List<String> modeOptions = new ArrayList<>();
-        String[] saModeOptions = {"help", "minpay", "payseries", "nextbal", "bipay"};
+        String[] saModeOptions = {"help", "minpay", "payseries", "nextbal", "bipay", "compare"};
         for (String s : saModeOptions) {
 
             modeOptions.add(s);
@@ -476,6 +520,14 @@ public class DepressingFigures {
                         BigDecimal biPayment = new BigDecimal(biPaymentStr);
 
                         df.makeBiMonthlyPayments(biPayment);
+                        break;
+
+                    case "compare":
+                        System.out.println("Enter payment amount for comparison: ");
+                        String comparisonStr = sc.next();
+                        BigDecimal comparisonPayment = new BigDecimal(comparisonStr);
+
+                        df.compareMonthlyVsBimonthly(comparisonPayment);
                         break;
 
                 }
